@@ -1,0 +1,64 @@
+
+name: &name "xxxxxxx"
+
+trainer:
+  gpus: 0 # number of gpus
+  auto_select_gpus: True
+  log_gpu_memory: 'all' # None, 'min_max', 'all'
+  max_epochs: ${oc.decode:${oc.env:epochs}}
+  max_steps: null # computed at runtime if not set
+  num_nodes: 1
+  accelerator: ddp
+  accumulate_grad_batches: 1
+  checkpoint_callback: false  # Provided by exp_manager
+  logger: false  # Provided by exp_manager
+  log_every_n_steps: 100  # Interval of logging.
+  val_check_interval: 1.0 # Set to 0.25 to check 4 times per epoch, or an int for number of iterations
+  precision: 32
+  sync_batchnorm: false
+  benchmark: false
+
+exp_manager:
+  explicit_log_dir: ${oc.env:output_dir} # 直接保存在指定目录下
+#  exp_dir: ${oc.env:output_dir} # 在当前目录下以 $name/version/ 来保存
+  name: *name
+  create_tensorboard_logger: true
+  create_checkpoint_callback: true
+  use_datetime_version: false
+  checkpoint_callback_params:
+#    filename: ""
+    monitor: "val_wer"
+    mode: "min"
+    save_top_k: 1
+    save_last: false
+    save_weights_only: false
+    always_save_nemo: true
+    save_best_model: true
+    every_n_val_epochs: null
+  create_wandb_logger: false
+  wandb_logger_kwargs:
+    name: null
+    project: null
+    entity: null
+  resume_if_exists: false
+  resume_ignore_no_checkpoint: false
+
+hydra:
+  run:
+    dir: .
+  job_logging:
+    root:
+      handlers: null
+  job:
+#    env_copy:
+#      - train_data_dir
+    env_set:
+      train_data_dir: ${oc.env:train_data_dir,/codes/audio/AISHELL-1_sample}
+      tensorboard_dir: ${oc.env:tensorboard_dir,/tensorboard}
+      output_dir: ${oc.env:output_dir,/ntt/alphamind}
+      batch_size: ${oc.env:batch_size,32}
+      epochs: ${oc.env:epochs,100}
+      HYDRA_FULL_ERROR: ${oc.env:HYDRA_FULL_ERROR,1}
+
+defaults:
+  - override hydra/job_logging: stdout
